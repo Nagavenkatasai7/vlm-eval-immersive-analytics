@@ -1,0 +1,33 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Environment variables
+.env
+
+# Generated data (large files)
+data/charts/**/*.png
+data/charts/**/*.json
+!data/charts/**/.gitkeep
+
+# Results (regenerable)
+results/responses/**/*.json
+results/scores/*.csv
+results/figures/*.png
+results/figures/*.pdf
+!results/**/.gitkeep
+
+# OS
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
+*.swp

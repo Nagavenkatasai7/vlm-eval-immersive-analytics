@@ -1,0 +1,40 @@
+models:
+- name: gpt-4o
+  provider: openai
+  model_id: gpt-4o
+  temperature: 0
+  max_tokens: 1024
+- name: claude-3.5-sonnet
+  provider: anthropic
+  model_id: claude-sonnet-4-20250514
+  temperature: 0
+  max_tokens: 1024
+- name: gemini-2.5-flash
+  provider: google
+  model_id: gemini-2.5-flash
+  temperature: 0
+  max_tokens: 1024
+chart_types:
+- bar
+- line
+- scatter
+- heatmap
+- area
+- stacked_bar
+n_per_type: 50
+n_trials: 1
+concurrency_limit: 5
+chart_types_3d:
+- bar_3d
+- line_3d
+- scatter_3d
+- heatmap_3d
+- area_3d
+- stacked_bar_3d
+paths:
+  charts_dir: data/charts
+  charts_3d_dir: data/charts_3d
+  charts_unity_dir: data/charts_unity
+  prompts_dir: data/prompts
+  results_dir: results
+  figures_dir: results/figures

@@ -1,0 +1,113 @@
+# ========================
+# Secrets & Credentials
+# ========================
+.env
+.env.local
+.env.*.local
+credentials.json
+*.pem
+*.key
+
+# ========================
+# Python
+# ========================
+__pycache__/
+*.py[cod]
+*$py.class
+build/
+dist/
+wheels/
+*.egg-info
+*.egg
+.venv/
+venv/
+.ruff_cache/
+
+# ========================
+# Generated Data (large, reproducible)
+# ========================
+vlm-eval-pipeline/data/charts/**/*.png
+vlm-eval-pipeline/data/charts/**/*.json
+vlm-eval-pipeline/data/charts_3d/**/*.png
+vlm-eval-pipeline/data/charts_3d/**/*.json
+vlm-eval-pipeline/data/charts_unity/**/*.png
+vlm-eval-pipeline/data/charts_unity/**/*.json
+vlm-eval-pipeline/data/charts_unity/unity_render.log
+vlm-eval-pipeline/data/charts_unity/_unity_configs.json
+vlm-eval-pipeline/data/prompts/
+
+# ========================
+# Results (regenerable)
+# ========================
+vlm-eval-pipeline/results/responses/**/*.json
+vlm-eval-pipeline/results/scores/*.csv
+vlm-eval-pipeline/results/figures/*.png
+vlm-eval-pipeline/results/figures/*.pdf
+vlm-eval-pipeline/results/report_figures/
+vlm-eval-pipeline/results/project_status_report.pdf
+
+# ========================
+# Unity - Build & Cache
+# ========================
+vlm-chart-renderer/Library/
+vlm-chart-renderer/Temp/
+vlm-chart-renderer/Obj/
+vlm-chart-renderer/Build/
+vlm-chart-renderer/Builds/
+vlm-chart-renderer/Logs/
+vlm-chart-renderer/UserSettings/
+vlm-chart-renderer/MemoryCaptures/
+vlm-chart-renderer/Recordings/
+vlm-chart-renderer/Assets/Plugins/Editor/JetBrains*
+
+# Unity meta files for empty dirs
+vlm-chart-renderer/Assets/Resources.meta
+
+# ========================
+# Unity leftovers in pipeline dir
+# ========================
+vlm-eval-pipeline/Library/
+vlm-eval-pipeline/Temp/
+vlm-eval-pipeline/UserSettings/
+vlm-eval-pipeline/Packages/
+vlm-eval-pipeline/ProjectSettings/
+
+# ========================
+# Logs
+# ========================
+*.log
+
+# ========================
+# OS Files
+# ========================
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ========================
+# IDE
+# ========================
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+*.sublime-project
+*.sublime-workspace
+
+# ========================
+# Claude Code
+# ========================
+.claude/
+
+# ========================
+# Lock files (large)
+# ========================
+vlm-eval-pipeline/uv.lock
+
+# ========================
+# Knowledge (large PDFs)
+# ========================
+knowledge/*.pdf
+knowledge/*.pptx
+knowledge/*.docx
