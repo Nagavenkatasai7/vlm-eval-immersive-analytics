@@ -2,36 +2,54 @@
 
 **CS 692 — Mobile Immersive Computing, Spring 2026, George Mason University**
 
-**Authors:** Naga Venkata Sai Chennu, Hemanjali Buchireddy
+**Authors:** Naga Venkata Sai Chennu & Hemanjali Buchireddy
 
-**Instructor:** Dr. Bo Han
+**Advisor:** Dr. Bo Han | **TA:** Fahim Arsad Nafis
 
 ---
 
 ## Overview
 
-This project systematically evaluates how well Vision Language Models (VLMs) can interpret data visualizations across different rendering conditions — from standard 2D charts to immersive 3D renderings. We test whether current VLMs can reliably serve as AI assistants in immersive analytics environments where visualizations are inherently three-dimensional.
+This project systematically evaluates how well Vision-Language Models (VLMs) can interpret data visualizations when those visualizations move from traditional flat 2D charts into 3D environments. We built a fully automated evaluation pipeline that generates charts from real-world data, sends them to commercial VLM APIs along with questions about the displayed data, and scores the model responses against known ground-truth answers.
 
-### Research Questions
+We evaluate **GPT-5.2** (OpenAI's latest flagship multimodal model, accessed via OpenRouter) using data from the **ChartX** benchmark dataset — a collection of real-world data tables extracted from academic publications across 22 topics.
 
-1. How does immersion (2D vs. 3D) affect VLM visualization literacy?
-2. How much does the rendering method (matplotlib 3D vs. Unity 3D) impact model accuracy?
-3. Which chart types and task types are most robust or fragile under 3D conditions?
-4. What are the cost-performance tradeoffs across different VLM providers?
+### Experimental Conditions
+
+| Condition | Description | GPT-5.2 Accuracy | Cost |
+|-----------|-------------|:-----------------:|:----:|
+| **2D Baseline** | Standard matplotlib charts | **82.0%** | $2.72 |
+| **3D matplotlib** | mplot3d 3D projections | **31.1%** | $1.47 |
+
+The evaluation encompasses 1,700 total question-answer pairs (850 per condition), covering 6 chart types with 50 instances each. Total API cost: **$4.19**.
 
 ### Key Findings
 
-| Model | 2D Accuracy | Matplotlib 3D | Unity 3D |
-|-------|-------------|---------------|----------|
-| Claude 3.5 Sonnet | 83.9% | — (API limits) | 27.3% |
-| Gemini 2.5 Flash | 83.6% | 56.8% | 45.6% |
-| GPT-5.2 (ChartX) | 82.0% | 31.1% | — |
+1. **Dramatic 3D Accuracy Degradation**: GPT-5.2 drops from 82.0% to 31.1% when the same real-world data is rendered in 3D — a **50.9 percentage point loss**
+2. **Bar Charts: Perfect 2D, Broken 3D**: Bar charts achieve 100% in 2D but collapse to 25.3% in 3D — the largest drop (-74.7pp) in our evaluation
+3. **Scatter Plots Are Most Resilient**: Scatter plots show the smallest 2D-to-3D drop (-34.7pp vs -74.7pp for bars), as their tasks depend on spatial patterns that survive 3D transformation
+4. **Task-Type Sensitivity**: Value retrieval tasks are devastated by 3D rendering because they require precise mapping from visual marks to numerical axes
+5. **Economic Impact**: Cost per correct answer increases 1.4x on 3D charts ($0.0039 to $0.0056)
+6. **Immersive Analytics Gap**: With accuracy at ~31% on 3D charts, current VLMs are not yet reliable for interpreting 3D data visualizations
 
-- **Progressive accuracy degradation** from 2D to matplotlib-3D to Unity 3D
-- **51 percentage point drop** from 2D to 3D on real-world ChartX data
-- Bar charts worst affected: 100% (2D) to 25.3% (3D)
-- Scatter plots most robust to 3D rendering
-- Gemini 2.5 Flash is 24x cheaper than Claude at comparable 3D accuracy
+### Accuracy by Chart Type
+
+| Chart Type | 2D Accuracy | 3D Accuracy | Drop (pp) | Data Source |
+|------------|:-----------:|:-----------:|:---------:|:-----------:|
+| Bar | 100.0% | 25.3% | -74.7 | ChartX |
+| Line | 82.0% | 27.3% | -54.7 | ChartX |
+| Scatter | 79.3% | 44.7% | -34.7 | Generated |
+| Heatmap | 82.7% | 25.3% | -57.3 | ChartX |
+| Area | 60.0% | 31.3% | -28.7 | ChartX |
+| Stacked Bar | 91.0% | 33.0% | -58.0 | Generated |
+| **Overall** | **82.0%** | **31.1%** | **-50.9** | **Hybrid** |
+
+### Why VLMs Struggle with 3D
+
+1. **Perspective Foreshortening** — Objects further from the camera appear smaller; a tall bar in the back can appear the same pixel height as a shorter bar in front
+2. **Occlusion** — Front elements partially or fully hide elements behind them; the VLM cannot rotate the view
+3. **Axis Readability** — 3D charts render axes at oblique angles, making tick marks and labels harder to read
+4. **Depth Ambiguity** — Two points at different depths may appear at the same (x, y) position in the image
 
 ---
 
@@ -65,7 +83,7 @@ This project systematically evaluates how well Vision Language Models (VLMs) can
 │   │   └── visualization.py       # Publication-quality figure generation
 │   ├── generate_report_pdf.py     # PDF report generator (ReportLab)
 │   ├── data/
-│   │   ├── charts/                # Generated 2D charts
+│   │   ├── charts/                # Generated 2D synthetic charts
 │   │   ├── charts_3d/             # Generated 3D matplotlib charts
 │   │   ├── charts_unity/          # Generated Unity 3D charts
 │   │   ├── charts_chartx/         # ChartX real-world 2D charts
@@ -93,6 +111,36 @@ This project systematically evaluates how well Vision Language Models (VLMs) can
     ├── Packages/
     └── ProjectSettings/
 ```
+
+---
+
+## Methodology
+
+### The ChartX Dataset
+
+We use real-world data from the [ChartX](https://huggingface.co/datasets/InternScience/ChartX) dataset (Apache 2.0 license). ChartX is a comprehensive chart benchmark containing 6,000+ chart images across 18 chart types and 22 academic topics (economics, health, demographics, environment, etc.). We adopt a **hybrid approach**: ChartX provides real-world data tables for 4 chart types (bar, line, area, heatmap), while scatter and stacked bar charts use procedurally generated data with controlled statistical properties.
+
+### Chart Generation Pipeline
+
+All 600 charts (300 per condition) are generated programmatically. For each ChartX record, we parse the embedded CSV data, extract categories, series names, and values, then render the chart through matplotlib. The same data is rendered once in 2D and once in 3D, using deterministic random seeds for full reproducibility. Ground-truth answers are computed at generation time and stored in JSON sidecar files.
+
+### The Six Chart Types
+
+| Chart Type | Data Source | Visual Encoding | What It Tests |
+|------------|:-----------:|-----------------|---------------|
+| Bar | ChartX | Rectangular bars | Value retrieval, comparison, extremum detection |
+| Line | ChartX | Connected data points over time | Trend identification, value reading |
+| Scatter | Generated | Points by x/y coordinates | Cluster counting, correlation, outlier detection |
+| Heatmap | ChartX | Cells colored by value intensity | Max-cell identification, cross-row comparison |
+| Area | ChartX | Lines with filled regions below | Trend identification, value comparison |
+| Stacked Bar | Generated | Multiple series stacked within bars | Part-to-whole reasoning, total comparison |
+
+### Scoring and Evaluation Logic
+
+When a VLM receives a chart image and a question, it returns a free-text response. Our automated scoring pipeline processes responses in two stages:
+
+- **Parsing**: For numeric tasks (value retrieval, max value, cluster count, part-to-whole), we extract the last number found in the response using regular expressions. For text tasks (comparison, trend ID, correlation direction), we use the full response text and search for expected keywords.
+- **Scoring**: Numeric answers are scored using a 10% tolerance — if the parsed number is within 10% of the ground truth, it is marked correct. Text answers are scored by checking whether the expected keyword appears in the response.
 
 ---
 
@@ -124,10 +172,10 @@ cp .env.example .env
 
 | Provider | Environment Variable | Models |
 |----------|---------------------|--------|
+| OpenRouter | `OPENROUTER_API_KEY` | GPT-5.2 (via `openai/gpt-5.2-chat`) |
 | Anthropic | `ANTHROPIC_API_KEY` | Claude 3.5 Sonnet |
 | Google | `GOOGLE_API_KEY` | Gemini 2.0 Flash, Gemini 2.5 Flash |
 | OpenAI | `OPENAI_API_KEY` | GPT-4o, GPT-4o-mini |
-| OpenRouter | `OPENROUTER_API_KEY` | GPT-5.2 (via `openai/gpt-5.2-chat`) |
 
 ---
 
@@ -178,7 +226,7 @@ PYTHONPATH=src uv run python -m vlm_eval evaluate --source chartx
 PYTHONPATH=src uv run python -m vlm_eval evaluate --source chartx --condition 3d
 
 # Evaluate specific models only
-PYTHONPATH=src uv run python -m vlm_eval evaluate --models gpt-5.2,gemini-2.5-flash
+PYTHONPATH=src uv run python -m vlm_eval evaluate --models gpt-5.2
 ```
 
 ### 3. Generate Reports
@@ -193,56 +241,9 @@ PYTHONPATH=src uv run python generate_report_pdf.py
 
 ---
 
-## Chart Types
-
-Six chart types are supported across all conditions:
-
-| Chart Type | 2D | Matplotlib 3D | Unity 3D |
-|------------|-----|---------------|----------|
-| Bar | `bar` | `bar_3d` | `bar_unity` |
-| Line | `line` | `line_3d` | `line_unity` |
-| Scatter | `scatter` | `scatter_3d` | `scatter_unity` |
-| Heatmap | `heatmap` | `heatmap_3d` | `heatmap_unity` |
-| Area | `area` | `area_3d` | `area_unity` |
-| Stacked Bar | `stacked_bar` | `stacked_bar_3d` | `stacked_bar_unity` |
-
-### Data Sources
-
-- **Synthetic**: Randomly generated data with controlled parameters (categories, series, value ranges)
-- **ChartX** (InternScience/ChartX): Real-world chart data from HuggingFace. Bar, line, area, and heatmap use real CSV data; scatter and stacked bar use synthetic data.
-
----
-
-## Evaluation Task Types
-
-Each chart is evaluated with 2-3 task types depending on the chart:
-
-| Task Type | Description | Charts |
-|-----------|-------------|--------|
-| `extremum_detection` | Identify max/min values | Bar |
-| `value_retrieval` | Read specific values | Bar, Stacked Bar |
-| `value_comparison` | Compare two values | Bar, Line |
-| `trend_identification` | Identify trend direction | Line, Area |
-| `max_value` | Find peak value | Line |
-| `cluster_count` | Count clusters | Scatter |
-| `outlier_presence` | Detect outliers | Scatter |
-| `correlation_direction` | Identify correlation | Scatter, Heatmap |
-| `max_value_cell` | Find highest cell | Heatmap |
-| `part_to_whole` | Compute ratios | Heatmap, Stacked Bar |
-| `magnitude_comparison` | Compare magnitudes | Stacked Bar |
-| `total_comparison` | Compare totals | Area |
-
-### Scoring Methods
-
-- **Relaxed accuracy**: Numeric values within 5% relative tolerance
-- **Keyword match**: Text answers with synonym expansion (e.g., "increasing" = "upward" = "rising")
-- **Exact match**: For count-type tasks
-
----
-
 ## Unity 3D Renderer
 
-The `vlm-chart-renderer/` project renders 3D charts in Unity for the most realistic immersive condition.
+The `vlm-chart-renderer/` project renders 3D charts in Unity for a more realistic immersive condition (planned third condition).
 
 ### How It Works
 
@@ -269,7 +270,7 @@ The `vlm-chart-renderer/` project renders 3D charts in Unity for the most realis
 - 3-point lighting: warm key light, cool fill light, rim/back light
 - 10-color analytics palette across all chart types
 - Grid floor for spatial reference
-- Dark background (0.08, 0.08, 0.12) for contrast
+- Dark background for contrast
 
 ---
 
@@ -305,9 +306,9 @@ paths:
 Add an entry under `models:` in `default.yaml`:
 
 ```yaml
-- name: claude-3.5-sonnet
-  provider: anthropic
-  model_id: claude-sonnet-4-20250514
+- name: gemini-2.5-flash
+  provider: google
+  model_id: gemini-2.5-flash
   temperature: 0
   max_tokens: 1024
 ```
@@ -316,26 +317,21 @@ Supported providers: `openai`, `anthropic`, `google`, `openrouter`
 
 ---
 
-## Results
+## Results Output
 
 Results are saved to `vlm-eval-pipeline/results/`:
 
 ```
 results/
-├── responses/           # Individual VLM response JSONs (cached)
-│   ├── gpt-5.2/
-│   ├── claude-3.5-sonnet/
-│   └── gemini-2.5-flash/
+├── responses/           # Individual VLM response JSONs (cached per model+condition)
+│   └── gpt-5.2/
 ├── scores/              # Aggregated result CSVs
-│   ├── all_results.csv          # 2D synthetic
-│   ├── all_results_3d.csv       # 3D matplotlib
-│   ├── all_results_unity.csv    # Unity 3D
 │   ├── all_results_chartx_2d.csv
 │   └── all_results_chartx_3d.csv
 └── figures/             # Generated analysis plots
 ```
 
-Each response JSON contains: model name, chart ID, question, expected answer, raw response, parsed answer, correctness, latency, token counts, and cost.
+Each response JSON contains: model name, chart ID, question, expected answer, raw response, parsed answer, correctness, scoring method, latency, token counts, and cost.
 
 ---
 
@@ -347,19 +343,31 @@ Chart images and evaluation results are **not** stored in the repository (they t
 cd vlm-eval-pipeline
 
 # Generate all chart conditions
-PYTHONPATH=src uv run python -m vlm_eval generate                              # 2D
-PYTHONPATH=src uv run python -m vlm_eval generate --condition 3d               # 3D
-PYTHONPATH=src uv run python -m vlm_eval generate --condition unity             # Unity
+PYTHONPATH=src uv run python -m vlm_eval generate                              # 2D synthetic
+PYTHONPATH=src uv run python -m vlm_eval generate --condition 3d               # 3D matplotlib
+PYTHONPATH=src uv run python -m vlm_eval generate --condition unity             # Unity 3D
 PYTHONPATH=src uv run python -m vlm_eval generate --source chartx               # ChartX 2D
 PYTHONPATH=src uv run python -m vlm_eval generate --source chartx --condition 3d # ChartX 3D
 
 # Run evaluations (requires API keys in .env)
-PYTHONPATH=src uv run python -m vlm_eval evaluate
-PYTHONPATH=src uv run python -m vlm_eval evaluate --condition 3d
-# ... etc.
+PYTHONPATH=src uv run python -m vlm_eval evaluate --source chartx
+PYTHONPATH=src uv run python -m vlm_eval evaluate --source chartx --condition 3d
 ```
 
 All generation uses seed 42 by default for reproducibility.
+
+---
+
+## Next Steps
+
+- Add Claude 3.5 Sonnet and Gemini 2.5 Flash to the ChartX evaluation for a full multi-model comparison
+- Render ChartX data through Unity 3D for a third, more immersive rendering condition
+- Manual error analysis: review 50+ failure cases to categorize failure modes
+- Statistical significance testing using McNemar's test for paired comparisons
+- Prompt engineering experiments: can chain-of-thought improve 3D accuracy?
+- Test additional conditions: different camera angles, lighting setups, resolutions
+- Write final report (6+ pages, ACM double-column format)
+- Final presentation: April 17, 2026
 
 ---
 
@@ -369,10 +377,10 @@ All generation uses seed 42 by default for reproducibility.
 
 | Package | Purpose |
 |---------|---------|
-| `anthropic` | Claude API client |
 | `openai` | OpenAI / OpenRouter API client |
+| `anthropic` | Anthropic API client |
 | `google-genai` | Gemini API client |
-| `matplotlib`, `seaborn` | Chart generation and figures |
+| `matplotlib`, `seaborn` | Chart generation and analysis figures |
 | `pandas`, `numpy` | Data processing |
 | `datasets`, `huggingface-hub` | ChartX dataset loading |
 | `pillow` | Image handling |
