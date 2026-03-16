@@ -1,4 +1,4 @@
-"""Concrete VLM client implementations for OpenAI, Anthropic, and Google Gemini."""
+"""Concrete VLM client implementations for OpenAI, OpenRouter, Anthropic, and Google Gemini."""
 
 from __future__ import annotations
 
@@ -28,6 +28,11 @@ logger = logging.getLogger(__name__)
 OPENAI_PRICING: dict[str, dict[str, float]] = {
     "gpt-4o": {"input": 2.50, "output": 10.00},
     "gpt-4o-mini": {"input": 0.15, "output": 0.60},
+    "gpt-5.2": {"input": 1.75, "output": 14.00},
+}
+
+OPENROUTER_PRICING: dict[str, dict[str, float]] = {
+    "openai/gpt-5.2-chat": {"input": 1.75, "output": 14.00},
 }
 
 CLAUDE_PRICING: dict[str, dict[str, float]] = {
@@ -107,6 +112,68 @@ class OpenAIVision(VisionModel):
         input_tokens = response.usage.prompt_tokens if response.usage else 0
         output_tokens = response.usage.completion_tokens if response.usage else 0
         cost = _compute_cost(OPENAI_PRICING, self.model_id, input_tokens, output_tokens)
+
+        return VisionResponse(
+            model_name=self.model_id,
+            raw_response=raw_text,
+            parsed_answer=None,
+            latency_ms=elapsed_ms,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            cost_usd=cost,
+        )
+
+
+# ---------------------------------------------------------------------------
+# OpenRouter  (GPT-5.2 via OpenRouter proxy)
+# ---------------------------------------------------------------------------
+
+
+class OpenRouterVision(VisionModel):
+    """Client for models accessed via OpenRouter (OpenAI-compatible API)."""
+
+    def __init__(self, model_id: str, api_key: str, **kwargs: Any) -> None:
+        super().__init__(model_id, api_key, **kwargs)
+        self.client = openai.AsyncOpenAI(
+            api_key=self.api_key,
+            base_url="https://openrouter.ai/api/v1",
+        )
+
+    async def query(self, image_path: Path, prompt: str) -> VisionResponse:
+        b64_image = self.encode_image(image_path)
+        suffix = image_path.suffix.lstrip(".").lower()
+        media_type = f"image/{suffix}" if suffix != "jpg" else "image/jpeg"
+        data_uri = f"data:{media_type};base64,{b64_image}"
+
+        messages = [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": prompt},
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": data_uri},
+                    },
+                ],
+            }
+        ]
+
+        async def _call() -> openai.types.chat.ChatCompletion:
+            return await self.client.chat.completions.create(
+                model=self.model_id,
+                messages=messages,
+                temperature=self.temperature,
+                max_tokens=self.max_tokens,
+            )
+
+        start = time.perf_counter()
+        response = await retry_with_backoff(_call)
+        elapsed_ms = (time.perf_counter() - start) * 1000
+
+        raw_text = response.choices[0].message.content or ""
+        input_tokens = response.usage.prompt_tokens if response.usage else 0
+        output_tokens = response.usage.completion_tokens if response.usage else 0
+        cost = _compute_cost(OPENROUTER_PRICING, self.model_id, input_tokens, output_tokens)
 
         return VisionResponse(
             model_name=self.model_id,
@@ -236,6 +303,7 @@ class GeminiVision(VisionModel):
 
 MODEL_REGISTRY: dict[str, type[VisionModel]] = {
     "openai": OpenAIVision,
+    "openrouter": OpenRouterVision,
     "anthropic": ClaudeVision,
     "google": GeminiVision,
 }
@@ -279,6 +347,7 @@ def get_model(provider: str, model_id: str, api_key: str, **kwargs: Any) -> Visi
     if not api_key:
         env_map: dict[str, str] = {
             "openai": "OPENAI_API_KEY",
+            "openrouter": "OPENROUTER_API_KEY",
             "anthropic": "ANTHROPIC_API_KEY",
             "google": "GOOGLE_API_KEY",
         }

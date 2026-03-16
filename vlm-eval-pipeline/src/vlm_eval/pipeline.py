@@ -40,9 +40,10 @@ class EvalPipeline:
     ) -> dict:
         """Evaluate a single item: query VLM, parse, score, store."""
         cache_key = f"{chart_id}_{task_type}"
+        condition = getattr(self.config, "condition", "2d")
 
         # Check cache
-        cached = self.store.check_cached(model_name, cache_key, trial)
+        cached = self.store.check_cached(model_name, cache_key, trial, condition)
         if cached:
             return cached
 
@@ -84,7 +85,7 @@ class EvalPipeline:
                 "trial": trial,
                 "condition": condition,
             }
-            self.store.save_response(model_name, cache_key, result, trial)
+            self.store.save_response(model_name, cache_key, result, trial, condition)
             return result
 
         # Determine expected type for parsing
@@ -120,7 +121,7 @@ class EvalPipeline:
             "condition": condition,
         }
 
-        self.store.save_response(model_name, cache_key, result, trial)
+        self.store.save_response(model_name, cache_key, result, trial, condition)
         return result
 
     async def _run_model(
@@ -234,12 +235,14 @@ class EvalPipeline:
         # Save all results (separate CSV per condition)
         df = pd.DataFrame(all_results)
         condition = getattr(self.config, "condition", "2d")
-        if condition == "3d":
-            self.store.save_results_df(df, filename="all_results_3d.csv")
-        elif condition == "unity":
-            self.store.save_results_df(df, filename="all_results_unity.csv")
-        else:
-            self.store.save_results_df(df)
+        condition_filenames = {
+            "3d": "all_results_3d.csv",
+            "unity": "all_results_unity.csv",
+            "chartx_2d": "all_results_chartx_2d.csv",
+            "chartx_3d": "all_results_chartx_3d.csv",
+        }
+        filename = condition_filenames.get(condition, "all_results.csv")
+        self.store.save_results_df(df, filename=filename)
         logger.info(f"Saved {len(df)} results ({condition}) to CSV")
 
         # Compute and display metrics

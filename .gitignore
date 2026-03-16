@@ -34,6 +34,10 @@ vlm-eval-pipeline/data/charts_unity/**/*.png
 vlm-eval-pipeline/data/charts_unity/**/*.json
 vlm-eval-pipeline/data/charts_unity/unity_render.log
 vlm-eval-pipeline/data/charts_unity/_unity_configs.json
+vlm-eval-pipeline/data/charts_chartx/**/*.png
+vlm-eval-pipeline/data/charts_chartx/**/*.json
+vlm-eval-pipeline/data/charts_chartx_3d/**/*.png
+vlm-eval-pipeline/data/charts_chartx_3d/**/*.json
 vlm-eval-pipeline/data/prompts/
 
 # ========================
@@ -99,6 +103,11 @@ Desktop.ini
 # Claude Code
 # ========================
 .claude/
+
+# ========================
+# Third-party toolkits
+# ========================
+dxr-toolkit/
 
 # ========================
 # Lock files (large)

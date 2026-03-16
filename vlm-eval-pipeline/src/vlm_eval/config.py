@@ -35,6 +35,8 @@ class PipelineConfig:
     charts_dir: Path = field(default_factory=lambda: PROJECT_ROOT / "data" / "charts")
     charts_3d_dir: Path = field(default_factory=lambda: PROJECT_ROOT / "data" / "charts_3d")
     charts_unity_dir: Path = field(default_factory=lambda: PROJECT_ROOT / "data" / "charts_unity")
+    charts_chartx_dir: Path = field(default_factory=lambda: PROJECT_ROOT / "data" / "charts_chartx")
+    charts_chartx_3d_dir: Path = field(default_factory=lambda: PROJECT_ROOT / "data" / "charts_chartx_3d")
     prompts_dir: Path = field(default_factory=lambda: PROJECT_ROOT / "data" / "prompts")
     results_dir: Path = field(default_factory=lambda: PROJECT_ROOT / "results")
     figures_dir: Path = field(default_factory=lambda: PROJECT_ROOT / "results" / "figures")
@@ -85,6 +87,10 @@ def load_config(config_path: Path | None = None) -> PipelineConfig:
                 config.charts_3d_dir = PROJECT_ROOT / paths["charts_3d_dir"]
             if "charts_unity_dir" in paths:
                 config.charts_unity_dir = PROJECT_ROOT / paths["charts_unity_dir"]
+            if "charts_chartx_dir" in paths:
+                config.charts_chartx_dir = PROJECT_ROOT / paths["charts_chartx_dir"]
+            if "charts_chartx_3d_dir" in paths:
+                config.charts_chartx_3d_dir = PROJECT_ROOT / paths["charts_chartx_3d_dir"]
             if "results_dir" in paths:
                 config.results_dir = PROJECT_ROOT / paths["results_dir"]
             if "figures_dir" in paths:

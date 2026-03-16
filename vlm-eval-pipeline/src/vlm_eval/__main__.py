@@ -15,6 +15,35 @@ def cmd_generate(args):
 
     config = load_config(Path(args.config) if args.config else None)
     n = args.n or config.n_per_type
+    source = getattr(args, "source", "synthetic") or "synthetic"
+
+    if source == "chartx":
+        # ChartX hybrid: real-world data for bar/line/area/heatmap, synthetic for scatter/stacked_bar
+        from vlm_eval.stimuli.chart_generator_chartx import generate_benchmark_dataset_chartx
+        chart_types = args.types.split(",") if args.types else config.chart_types
+
+        if args.condition == "3d":
+            from vlm_eval.stimuli.chart_generator_chartx_3d import generate_benchmark_dataset_chartx_3d
+            print(f"Generating {n} ChartX 3D charts each for: {chart_types}")
+            items = generate_benchmark_dataset_chartx_3d(
+                chart_types=chart_types,
+                n_per_type=n,
+                output_base_dir=config.charts_chartx_3d_dir,
+                seed=args.seed,
+            )
+            print(f"Generated {len(items)} ChartX 3D benchmark items")
+            print(f"Charts saved to: {config.charts_chartx_3d_dir}")
+        else:
+            print(f"Generating {n} ChartX 2D charts each for: {chart_types}")
+            items = generate_benchmark_dataset_chartx(
+                chart_types=chart_types,
+                n_per_type=n,
+                output_base_dir=config.charts_chartx_dir,
+                seed=args.seed,
+            )
+            print(f"Generated {len(items)} ChartX benchmark items")
+            print(f"Charts saved to: {config.charts_chartx_dir}")
+        return
 
     if args.condition == "unity":
         from vlm_eval.stimuli.chart_generator_unity import generate_benchmark_dataset_unity
@@ -78,9 +107,17 @@ def cmd_evaluate(args):
     from vlm_eval.pipeline import EvalPipeline
 
     config = load_config(Path(args.config) if args.config else None)
+    source = getattr(args, "source", "synthetic") or "synthetic"
 
-    # Switch chart directory based on condition
-    if args.condition == "unity":
+    # Switch chart directory based on condition and source
+    if source == "chartx":
+        if args.condition == "3d":
+            config.charts_dir = config.charts_chartx_3d_dir
+            config.condition = "chartx_3d"
+        else:
+            config.charts_dir = config.charts_chartx_dir
+            config.condition = "chartx_2d"
+    elif args.condition == "unity":
         config.charts_dir = config.charts_unity_dir
         config.condition = "unity"
     elif args.condition == "3d":
@@ -130,6 +167,8 @@ def main():
     gen_parser.add_argument("--config", help="Path to config YAML")
     gen_parser.add_argument("--condition", choices=["2d", "3d", "unity"], default="2d",
                             help="Generate 2D or 3D charts")
+    gen_parser.add_argument("--source", choices=["synthetic", "chartx"], default="synthetic",
+                            help="Data source: synthetic (random) or chartx (real-world)")
 
     # Evaluate
     eval_parser = subparsers.add_parser("evaluate", help="Run VLM evaluation")
@@ -137,6 +176,8 @@ def main():
     eval_parser.add_argument("--config", help="Path to config YAML")
     eval_parser.add_argument("--condition", choices=["2d", "3d", "unity"], default="2d",
                              help="Evaluate on 2D or 3D charts")
+    eval_parser.add_argument("--source", choices=["synthetic", "chartx"], default="synthetic",
+                             help="Data source: synthetic or chartx")
 
     # Report
     report_parser = subparsers.add_parser("report", help="Generate figures and tables")

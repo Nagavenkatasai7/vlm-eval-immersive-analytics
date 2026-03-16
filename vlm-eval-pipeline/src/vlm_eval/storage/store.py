@@ -19,22 +19,25 @@ class ResultStore:
         self.scores_dir = results_dir / "scores"
         self.scores_dir.mkdir(exist_ok=True)
 
-    def _response_path(self, model_name: str, chart_id: str, trial: int = 0) -> Path:
-        model_dir = self.responses_dir / model_name.replace("/", "_")
+    def _response_path(self, model_name: str, chart_id: str, trial: int = 0, condition: str = "") -> Path:
+        dir_name = model_name.replace("/", "_")
+        if condition:
+            dir_name = f"{dir_name}_{condition}"
+        model_dir = self.responses_dir / dir_name
         model_dir.mkdir(parents=True, exist_ok=True)
         return model_dir / f"{chart_id}_trial{trial}.json"
 
-    def check_cached(self, model_name: str, chart_id: str, trial: int = 0) -> dict | None:
+    def check_cached(self, model_name: str, chart_id: str, trial: int = 0, condition: str = "") -> dict | None:
         """Return cached response dict or None."""
-        path = self._response_path(model_name, chart_id, trial)
+        path = self._response_path(model_name, chart_id, trial, condition)
         if path.exists():
             with open(path) as f:
                 return json.load(f)
         return None
 
-    def save_response(self, model_name: str, chart_id: str, response: dict, trial: int = 0):
+    def save_response(self, model_name: str, chart_id: str, response: dict, trial: int = 0, condition: str = ""):
         """Save a single response as JSON."""
-        path = self._response_path(model_name, chart_id, trial)
+        path = self._response_path(model_name, chart_id, trial, condition)
         with open(path, "w") as f:
             json.dump(response, f, indent=2, default=str)
 
